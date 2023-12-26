@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-
+import clsx from 'clsx';
 import {
     Row,
-    Col,
+    Col, CardHeader, Progress,
     UncontrolledTooltip,
-    Nav,
+    Nav, TabContent, TabPane,
     NavItem,
     Button, Form,
     Modal, Table, Card, Badge,
@@ -15,7 +15,8 @@ import {
     DropdownMenu,
     CustomInput, Label, Input
 } from 'reactstrap';
-
+import { NavLink as NavLinkStrap } from 'reactstrap';
+import Chart from 'react-apexcharts';
 import avatar1 from '../assets/images/avatars/avatar1.jpg';
 import avatar2 from '../assets/images/avatars/avatar2.jpg';
 import avatar5 from '../assets/images/avatars/avatar5.jpg';
@@ -26,27 +27,59 @@ import Trend from 'react-trend';
 import CountUp from 'react-countup';
 export default function LivePreviewExample() {
 
+    const [activeTab, setActiveTab] = useState('1');
+
+    const toggle = (tab) => {
+        if (activeTab !== tab) setActiveTab(tab);
+    };
+
+    const [checkC, setCheckC] = useState(false)
+    const checkToggle = async () => {
+        // console.log(a)
+        // setId(a)
+        setCheckC(!checkC)
+    }
+    const [update, setUpdate] = useState(false)
+    const toggleUpdate = async () => {
+        // console.log(a)
+        // setId(a)
+        setUpdate(!update)
+    }
     const [data, setData] = useState("")
+    const [dataPair, setDataPair] = useState("")
     const [accountInfo, setAccountInfo] = useState("")
 
     const [modal, setModal] = useState(false);
     const toggleModal = () => setModal(!modal);
     const [addPair, setAddPair] = useState([])
     const [pairName, setPairName] = useState("")
+    const [pair1Order, setPair1Order] = useState("")
+    const [pair2Order, setPair2Order] = useState("")
+    const [lot, setLot] = useState(0.1)
 
+    const backendURI = "ec2-3-25-98-134.ap-southeast-2.compute.amazonaws.com";
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const { data: response } = await axios.get('http://8.219.48.50:3001/data');
+                const { data: response } = await axios.get('http://' + backendURI + ':3001/data');
                 console.log(response)
                 setData(response);
             } catch (error) {
                 console.error(error.message);
             }
         }
-
+        const fetchDataPair = async () => {
+            try {
+                const { data: response } = await axios.get('http://' + backendURI + ':3001/datapair');
+                console.log(response)
+                setDataPair(response);
+            } catch (error) {
+                console.error(error.message);
+            }
+        }
         fetchData();
-    }, []);
+        fetchDataPair();
+    }, [update]);
     const handleCheckboxChange = (a) => {
         let dd = addPair;
         console.log(dd)
@@ -60,7 +93,7 @@ export default function LivePreviewExample() {
         }
     };
 
-    const addPairSubmit = async event => {
+    const addPairSubmit = async (event) => {
         event.preventDefault();
         console.log(pairName)
         console.log(addPair)
@@ -80,29 +113,123 @@ export default function LivePreviewExample() {
         let pair1 = dd[0]
         let pair2 = dd[1]
 
-        axios.post('http://8.219.48.50:3001/addData', { pairName, pair1, pair2 }, {
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            withCredentials: true
-        }
-        )
-            .then(res => {
-                console.log(res.data)
-                // setData(response.data);
-                //     if (res.data.status === "ok") {
-                //         // setSiteData(res.data.data)
-                //         setStatus("crate new data successfully")
-                //         toggle1()
-                //         updatetoggle()
-                //         updateCfo()
-                //     } else {
-                //         return alert(res.data.status);
-                //     }
+        axios.post('http://' + backendURI + ':3001/addData', { pairName, pair1, pair2 })
+            .then(response => {
+                console.log('POST request successful');
+                console.log(response.data); // The response data from the server
+                if (response.data.status === "ok") {
+                    toggleUpdate()
+                    setAddPair([])
+                    // window.location.reload();
+                    if (response.data.data === "no data") {
+                        setAddPair([])
+                    }
+                }
             })
             .catch(error => {
-                console.error('Error fetching data:', error);
+                console.error('Error making POST request', error);
             });
+    }
+    const deletePairSubmit = async (id) => {
+        // event.preventDefault();
+        console.log(id)
+
+        axios.post('http://' + backendURI + ':3001/datapairdelete', { id })
+            .then(response => {
+                // console.log('POST request successful');
+                console.log(response.data); // The response data from the server
+                if (response.data.status === "ok") {
+                    toggleUpdate()
+                    // window.location.reload();
+                    if (response.data.data === "no data") {
+                        setAddPair([])
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error making POST request', error);
+            });
+    }
+    const closePositionSubmit = async (id) => {
+        // event.preventDefault();
+        console.log(id)
+
+        axios.post('http://' + backendURI + ':3001/closeposition', { id })
+            .then(response => {
+                // console.log('POST request successful');
+                console.log(response.data); // The response data from the server
+                if (response.data.status === "ok") {
+                    toggleUpdate()
+                    // window.location.reload();
+                    if (response.data.data === "no data") {
+                        setAddPair([])
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error making POST request', error);
+            });
+    }
+    const ResetStatusSubmit = async (id) => {
+        // event.preventDefault();
+        console.log(id)
+
+        axios.post('http://' + backendURI + ':3001/statusreset', { id })
+            .then(response => {
+                // console.log('POST request successful');
+                console.log(response.data); // The response data from the server
+                if (response.data.status === "ok") {
+                    toggleUpdate()
+                    // window.location.reload();
+                    if (response.data.data === "no data") {
+                        setAddPair([])
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error making POST request', error);
+            });
+    }
+    const orderSubmit = async (a) => {
+        // event.preventDefault();
+        console.log(a)
+        let id = a._id
+        console.log(pair1Order, pair2Order, lot)
+        if (pair1Order === "" || pair2Order === "" || a.status === "close") {
+            alert("please specific buy/sell or reset status to blank!")
+        } else if (a.status !== "") {
+            alert("position is running!")
+        } else {
+
+            axios.post('http://' + backendURI + ':3001/order', { id, lot, pair1Order, pair2Order })
+                .then(response => {
+                    // console.log('POST request successful');
+                    console.log(response.data); // The response data from the server
+                    if (response.data.status === "ok") {
+                        toggleUpdate()
+                        // window.location.reload();
+                        if (response.data.data === "no data") {
+                            setAddPair([])
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error making POST request', error);
+                });
+
+        }
+
+        checkToggle()
+    }
+    const buy1Submit = async (a) => {
+        console.log(a)
+        setPair1Order(a)
+        setPair2Order("sell")
+    }
+    const sell1Submit = async (a) => {
+        console.log(a)
+        setPair1Order(a)
+        setPair2Order("buy")
     }
 
     const accountShow = () => {
@@ -112,131 +239,173 @@ export default function LivePreviewExample() {
             // console.log(account)
             let accountid = [...new Set((account.data).map(obj => obj.accountid))];
             // console.log(accountid)
-
             return (
                 <>
-                    {accountid.map(acc => {
-                        let accDetail = (account.data).filter(data1 => data1.accountid == acc)
-                        // console.log(accDetail)
-                        const last = accDetail[accDetail.length - 1];
-                        // console.log(last)
-                        // if (last != undefined)
-                        return (
-                            <div className="card-body pt-3 px-4 pb-4">
-                                <h4 className="font-weight-bold font-size-lg mb-1 text-black">
-                                    Account:{acc}
-                                </h4>
-                                <Table className="table-alternate-spaced mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th className="text-center">AddPair</th>
-                                            <th className="text-center">account</th>
-                                            <th className="text-center">Fee Swap Long</th>
-                                            <th className="text-center">Fee Swap Short</th>
-                                            <th className="text-center">Profit</th>
-                                            <th className="text-center">Swap</th>
-                                            <th className="text-left">Date</th>
-                                            <th className="text-center" style={{ width: '15%' }}>
-                                                Trends
-                                            </th>
-                                            <th className="text-right">Totals</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td className="text-center" >
-                                                {/* <CustomInput
-                                                    type="checkbox"
-                                                    id={last.accountid}
-                                                    className="align-self-start"
-                                                    label="&nbsp;"
-                                                    onChange={handleCheckboxChange}
-                                                /> */}
-                                                <Button
-                                                    onClick={() => handleCheckboxChange(last._id)}
-                                                    size="sm"
-                                                    color="success"
-                                                    id={last.accountid}>
-                                                    <span className="btn-wrapper--icon">
-                                                        <FontAwesomeIcon
-                                                            icon={['fas', 'plus']}
-                                                            className="opacity-4 font-size-sm"
-                                                        />
-                                                    </span>
-                                                </Button>
-                                            </td>
-                                            <td>
-                                                <div>
-                                                    <a
-                                                        href="#/"
-                                                        onClick={(e) => e.preventDefault()}
-                                                        className="font-weight-bold text-black"
-                                                        title="...">
-                                                        {last.SYMBOL}
-                                                    </a>
-                                                    <span className="text-black-50 d-block">
-                                                        {last.company}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="text-center">
-                                                <span className="font-weight-bold text-danger">{last.swapLongTrade}</span>
-                                            </td>
-                                            <td className="text-center">
-                                                <span className="font-weight-bold text-danger">{last.swapShortTrade}</span>
-                                            </td>
-                                            <td className="text-center">
-                                                <span className="font-weight-bold text-danger">{last.PositionProfit}</span>
-                                            </td>
-                                            <td className="text-center">
-                                                <span className="text-danger font-weight-bold">{last.PositionSwap}</span>
-                                            </td>
-                                            <td >
-                                                <div>
-                                                    <a
-                                                        href="#/"
-                                                        onClick={(e) => e.preventDefault()}
-                                                        className="font-weight-bold text-black"
-                                                        title="...">
-                                                        {last.time}
-                                                    </a>
-                                                    {/* <span className="text-black-50 d-block">
-                                                        {last[0].time}
-                                                    </span> */}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <Trend
-                                                    data={[0, 10, 5, 22, 3.6, 11]}
-                                                    autoDraw
-                                                    autoDrawDuration={3000}
-                                                    autoDrawEasing="ease-in"
-                                                    radius={15}
-                                                    smooth
-                                                    stroke="var(--danger)"
-                                                    strokeLinecap="round"
-                                                    strokeWidth={5}
-                                                />
-                                            </td>
-                                            <td className="text-right">
-                                                <div className="d-flex align-items-center justify-content-end">
-                                                    <div className="font-weight-bold font-size-lg pr-2">
-                                                        {parseFloat(last.PositionProfit + last.PositionSwap).toFixed(2)}
-                                                    </div>
+                    {
+                        accountid.map(acc => {
+                            let accDetail = (account.data).filter(data1 => data1.accountid == acc)
+                            let accountsymbol = [...new Set((accDetail).map(obj => obj.SYMBOL))];
 
-                                                </div>
-                                            </td>
-                                        </tr>
+                            return (
+                                <>
+                                    <div className="card-body pt-3 px-4 pb-4">
+                                        <h4 className="font-weight-bold font-size-lg mb-1 text-black">
+                                            Account:{acc}
+                                        </h4>
+                                        {accountsymbol.map(sym => {
+                                            let accSymDetail = (account.data).filter(data1 => data1.SYMBOL == sym)
+                                            // console.log(accDetail)
 
-                                    </tbody>
-                                </Table>
-                            </div>
-                        )
+                                            const last = accSymDetail[accSymDetail.length - 1];
+                                            console.log(last)
+                                            console.log(dataPair.data)
+                                            let pairinuse = false;
+                                            if (last != undefined)
+                                                if (dataPair !== "") {
+                                                    (dataPair.data).map(d => {
+                                                        if ((d.pair1.accountid == last.accountid && d.pair1.SYMBOL === last.SYMBOL) || (d.pair2.accountid == last.accountid && d.pair2.SYMBOL === last.SYMBOL)) {
+                                                            pairinuse = true;
+                                                        }
 
-                    })}
+                                                    })
+                                                }
+                                            const checkNumber = (a) => {
 
+                                                if (a < 0) {
+                                                    return (
+                                                        <span className="font-weight-bold text-danger">{a}</span>
+                                                    )
+                                                } else {
+                                                    return (
+                                                        <span className="font-weight-bold text-success">{a}</span>
+                                                    )
+                                                }
+                                            }
+                                            return (
+
+                                                <Table className="table-alternate-spaced mb-0">
+                                                    <thead>
+                                                        <tr>
+                                                            <th className="text-center">AddPair</th>
+                                                            <th className="text-center">account</th>
+                                                            <th className="text-center">Fee Swap Long</th>
+                                                            <th className="text-center">Fee Swap Short</th>
+                                                            <th className="text-center">Profit</th>
+                                                            <th className="text-center">Swap</th>
+                                                            <th className="text-left">Date</th>
+                                                            <th className="text-center" style={{ width: '15%' }}>
+                                                                Trends
+                                                            </th>
+                                                            <th className="text-right">Totals</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td className="text-center" >
+                                                                {/* <CustomInput
+                                                        type="checkbox"
+                                                        id={last.accountid}
+                                                        className="align-self-start"
+                                                        label="&nbsp;"
+                                                        onChange={handleCheckboxChange}
+                                                    /> */}
+                                                                <Button
+                                                                    onClick={() => handleCheckboxChange(last._id)}
+                                                                    size="sm"
+                                                                    // color="success"
+                                                                    disabled={pairinuse}
+                                                                    id={last.accountid}>
+                                                                    <span className="btn-wrapper--icon">
+                                                                        <FontAwesomeIcon
+                                                                            icon={['fas', 'bullseye']}
+                                                                            className="opacity-4 font-size-xl"
+                                                                        />
+                                                                    </span>
+                                                                </Button>
+                                                                {/* <UncontrolledTooltip target={last.accountid}>
+                                                                    Add Pair
+                                                                </UncontrolledTooltip> */}
+                                                            </td>
+                                                            <td>
+                                                                <div>
+                                                                    <a
+                                                                        href="#/"
+                                                                        onClick={(e) => e.preventDefault()}
+                                                                        className="font-weight-bold text-black"
+                                                                        title="...">
+                                                                        {last.SYMBOL}
+                                                                    </a>
+                                                                    <span className="text-black-50 d-block">
+                                                                        {last.company}
+                                                                    </span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="text-center">
+                                                                {checkNumber(last.swapLongTrade)}
+                                                            </td>
+                                                            <td className="text-center">
+                                                                {checkNumber(last.swapShortTrade)}
+                                                            </td>
+                                                            <td className="text-center">
+                                                                {checkNumber(last.PositionProfit)}
+                                                            </td>
+                                                            <td className="text-center">
+                                                                {checkNumber(last.PositionSwap)}
+                                                            </td>
+                                                            <td >
+                                                                <div>
+                                                                    <a
+                                                                        href="#/"
+                                                                        onClick={(e) => e.preventDefault()}
+                                                                        className="font-weight-bold text-black"
+                                                                        title="...">
+                                                                        {last.time}
+                                                                    </a>
+                                                                    {/* <span className="text-black-50 d-block">
+                                                            {last[0].time}
+                                                        </span> */}
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <Trend
+                                                                    data={[0, 10, 5, 22, 3.6, 11]}
+                                                                    autoDraw
+                                                                    autoDrawDuration={3000}
+                                                                    autoDrawEasing="ease-in"
+                                                                    radius={15}
+                                                                    smooth
+                                                                    stroke="var(--danger)"
+                                                                    strokeLinecap="round"
+                                                                    strokeWidth={5}
+                                                                />
+                                                            </td>
+                                                            <td className="text-right">
+                                                                <div className="d-flex align-items-center justify-content-end">
+                                                                    <div className="font-weight-bold font-size-lg pr-2">
+                                                                        {checkNumber(parseFloat(last.PositionProfit + last.PositionSwap).toFixed(2))}
+                                                                        {/* {parseFloat(last.PositionProfit + last.PositionSwap).toFixed(2)} */}
+                                                                    </div>
+
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+
+                                                    </tbody>
+                                                </Table>
+
+                                            )
+
+                                        })}
+                                    </div>
+                                </>
+                            )
+                        })
+                    }
                 </>
             )
+
+
+
         }
 
     }
@@ -312,6 +481,264 @@ export default function LivePreviewExample() {
         }
 
     }
+    const homeShow = () => {
+        const chartsLarge3Options = {
+            chart: {
+                toolbar: {
+                    show: false
+                },
+                sparkline: {
+                    enabled: false
+                }
+            },
+            dataLabels: {
+                enabled: false
+            },
+            grid: {
+                strokeDashArray: '5',
+                borderColor: 'rgba(125, 138, 156, 0.3)'
+            },
+            stroke: {
+                show: true,
+                width: 2,
+                colors: ['transparent']
+            },
+            fill: {
+                color: '#3c44b1',
+                gradient: {
+                    shade: 'light',
+                    type: 'vertical',
+                    shadeIntensity: 0.2,
+                    inverseColors: false,
+                    opacityFrom: 0.8,
+                    opacityTo: 0,
+                    stops: [0, 100]
+                }
+            },
+            colors: ['#3c44b1'],
+            legend: {
+                show: false
+            },
+            labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July']
+        };
+        const chartsLarge3Data = [
+            {
+                name: 'Net Profit',
+                data: [3.3, 3.1, 4.0, 5.8, 2.1, 3.6, 3.2]
+            },
+            {
+                name: 'Net Loss',
+                data: [2.1, 2.1, 2.8, 2.8, 4.3, 2.7, 1.4]
+            }
+        ];
+        if (dataPair !== "" && data !== "") {
+
+            return (
+                <>
+                    <div>
+                        <Row>
+
+                            {(dataPair.data).map(pl => {
+                                let acc1Detail = (data.data).filter(data1 => data1.accountid == pl.pair1.accountid && data1.SYMBOL == pl.pair1.SYMBOL)
+                                let acc2Detail = (data.data).filter(data1 => data1.accountid == pl.pair2.accountid && data1.SYMBOL == pl.pair2.SYMBOL)
+                                // console.log(acc1Detail)
+                                const last1 = acc1Detail[acc1Detail.length - 1];
+                                const last2 = acc2Detail[acc2Detail.length - 1];
+                                // console.log(last1)
+                                return (
+                                    <>
+                                        <Col xl="6">
+                                            <Card className="card-box mb-5">
+                                                <CardHeader>
+                                                    <div className="card-header--title">
+                                                        <h2 className="font-size-lg mb-0 py-2 font-weight-bold">
+                                                            {pl.name}
+                                                        </h2>
+                                                    </div>
+                                                    <div className="card-header--actions">
+                                                        {/* <Button size="sm" color="neutral-primary">
+                                                            <span className="btn-wrapper--label">Export</span>
+                                                            <span className="btn-wrapper--icon">
+                                                                <FontAwesomeIcon
+                                                                    icon={['fas', 'chevron-down']}
+                                                                    className="opacity-8 font-size-xs"
+                                                                />
+                                                            </span>
+                                                        </Button> */}
+                                                        <UncontrolledDropdown tag="span" className="m-2">
+                                                            <DropdownToggle size="sm" color="second" caret>
+                                                                ACTION
+                                                            </DropdownToggle>
+                                                            <DropdownMenu>
+                                                                <div role="menuitem">
+                                                                    <a
+                                                                        className="dropdown-item"
+                                                                        // href="#/"
+                                                                        onClick={() => checkToggle(pl)}>
+                                                                        Order
+                                                                    </a>
+                                                                </div>
+                                                                <div role="menuitem">
+                                                                    <a
+                                                                        className="dropdown-item"
+                                                                        // href="#/"
+                                                                        onClick={() => closePositionSubmit(pl._id)}>
+                                                                        Close Position
+                                                                    </a>
+                                                                </div>
+                                                                <div role="menuitem">
+                                                                    <a
+                                                                        className="dropdown-item"
+                                                                        // href="#/"
+                                                                        onClick={() => ResetStatusSubmit(pl._id)}>
+                                                                        Reset Status
+                                                                    </a>
+                                                                </div>
+                                                                <div role="menuitem">
+                                                                    <a
+                                                                        className="dropdown-item"
+                                                                        // href="#/"
+                                                                        onClick={() => deletePairSubmit(pl._id)}>
+                                                                        Delete Pair
+                                                                    </a>
+                                                                </div>
+
+                                                            </DropdownMenu>
+                                                        </UncontrolledDropdown>
+                                                    </div>
+                                                </CardHeader>
+                                                <div className="card-body pb-1 font-weight-bold">
+                                                    <Row className="pt-3">
+                                                        <Col >
+                                                            <div className="pb-4 px-3">
+                                                                <span className="text-dark pb-4">{pl.pair1.company}</span>
+                                                                <span className="font-size-lg d-block">
+                                                                    {pl.pair1.accountid}
+                                                                </span>
+                                                            </div>
+                                                            <div className="pb-4 px-3">
+                                                                <span className="text-dark pb-4">{pl.pair1.SYMBOL}</span>
+                                                                <span className="font-size-lg d-block">
+                                                                    <small>PROFIT</small> {last1.PositionProfit} <small>SWAP</small> {last1.PositionSwap}
+                                                                </span>
+                                                            </div>
+                                                        </Col>
+                                                        <Col >
+                                                            <div className="pb-4 px-3">
+                                                                <span className="text-dark pb-4">{pl.pair2.company}</span>
+                                                                <span className="font-size-lg d-block">
+                                                                    {pl.pair2.accountid}
+                                                                </span>
+                                                            </div>
+                                                            <div className="pb-4 px-3">
+                                                                <span className="text-dark pb-4">{pl.pair2.SYMBOL}</span>
+                                                                <span className="font-size-lg d-block">
+                                                                    <small>PROFIT</small> {last2.PositionProfit} <small>SWAP</small> {last2.PositionSwap}
+                                                                </span>
+                                                            </div>
+                                                        </Col>
+
+                                                    </Row>
+                                                    <Row>
+                                                        <Col>
+                                                            <div className="pb-4 px-3">
+                                                                <span className="text-dark pb-4">Total</span>
+                                                                <span className="font-size-lg d-block">{parseFloat((last1.PositionProfit + last1.PositionSwap) + (last2.PositionProfit + last2.PositionSwap)).toFixed(2)}</span>
+                                                            </div>
+
+                                                        </Col>
+                                                        <Col>
+                                                            <div className="pb-4 px-3">
+                                                                <span className="text-dark pb-4">Status</span>
+                                                                <span className="font-size-lg d-block">{pl.status}</span>
+                                                            </div>
+
+                                                        </Col>
+                                                    </Row>
+                                                    <Chart
+                                                        options={chartsLarge3Options}
+                                                        series={chartsLarge3Data}
+                                                        type="area"
+                                                        height={317}
+                                                    />
+                                                </div>
+                                            </Card>
+                                        </Col>
+                                        <Modal zIndex={2000} centered isOpen={checkC} toggle={checkToggle}>
+                                            <div className="text-center p-5">
+                                                <Row>
+                                                    <Col>
+                                                        <div>
+                                                            <span className="text-dark pb-4">{pl.pair1.accountid}</span>
+                                                            <span className="font-size-lg d-block">{pl.pair1.SYMBOL}</span>
+                                                            <span className="font-size-lg d-block"><b>{pair1Order}</b></span>
+                                                        </div>
+                                                    </Col>
+                                                    <Col>
+                                                        <div>
+                                                            <span className="text-dark pb-4">{pl.pair2.accountid}</span>
+                                                            <span className="font-size-lg d-block">{pl.pair2.SYMBOL}</span>
+                                                            <span className="font-size-lg d-block"><b>{pair2Order}</b></span>
+                                                        </div>
+                                                    </Col>
+                                                </Row>
+                                                <Row>
+                                                    <Col>
+                                                        <div className="pt-4" id="p1">
+                                                            <Button
+                                                                onClick={() => buy1Submit("buy")}
+                                                                color="neutral-primary"
+                                                                className="btn-pill mx-1">
+                                                                <span className="btn-wrapper--label">BUY</span>
+                                                            </Button>
+                                                            <Button
+                                                                onClick={() => sell1Submit("sell")}
+                                                                color="neutral-danger"
+                                                                className="btn-pill mx-1">
+                                                                <span className="btn-wrapper--label">SELL</span>
+                                                            </Button>
+                                                        </div>
+                                                    </Col>
+                                                    <Col>
+                                                        <div className="pt-4">
+                                                            <Label htmlFor="lot">LOT</Label>
+                                                            <Input type="number" step={0.01} name="lot" id="lot" placeholder={lot} onChange={e => setLot(e.target.value)} >
+                                                            </Input>
+                                                        </div>
+                                                    </Col>
+                                                </Row>
+                                                <div className="pt-4">
+                                                    <Button
+                                                        onClick={e => checkToggle()}
+                                                        color="neutral-secondary"
+                                                        className="btn-pill mx-1">
+                                                        <span className="btn-wrapper--label">Cancel</span>
+                                                    </Button>
+                                                    <Button
+                                                        onClick={e => orderSubmit(pl)}
+                                                        outline
+                                                        color="warning"
+                                                        className="btn-pill mx-1">
+                                                        <span className="btn-wrapper--label">submit</span>
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </Modal>
+                                    </>
+                                );
+                            })
+
+                            }
+
+                        </Row>
+                    </div>
+                </>
+            )
+
+
+        }
+
+    }
     return (
         <>
             { }
@@ -324,11 +751,50 @@ export default function LivePreviewExample() {
                         {/* Reports for what we sold this week. */}
                     </p>
                 </div>
-                <div className="card-header-alt p-4">
-                    <h4 className="font-weight-bold font-size-lg mb-1 text-black">
-                        SETUP PairName
-                    </h4><br></br>
-                    {/* <Button
+                <div className="nav-tabs-primary">
+                    <Nav tabs>
+                        <NavItem>
+                            <NavLinkStrap
+                                className={clsx({ active: activeTab === '1' })}
+                                onClick={() => {
+                                    toggle('1');
+                                }}>
+                                Home
+                            </NavLinkStrap>
+                        </NavItem>
+                        <NavItem>
+                            <NavLinkStrap
+                                className={clsx({ active: activeTab === '2' })}
+                                onClick={() => {
+                                    toggle('2');
+                                }}>
+                                SETUP
+                            </NavLinkStrap>
+                        </NavItem>
+                        <NavItem>
+                            <NavLinkStrap
+                                className={clsx({ active: activeTab === '3' })}
+                                onClick={() => {
+                                    toggle('3');
+                                }}>
+                                Messages
+                            </NavLinkStrap>
+                        </NavItem>
+                    </Nav>
+                </div>
+                <TabContent activeTab={activeTab}>
+                    <TabPane tabId="1">
+                        <div className="text-center my-5">
+                            {homeShow()}
+                        </div>
+                    </TabPane>
+                    <TabPane tabId="2">
+                        <div className="text-center my-5">
+                            <div className="card-header-alt p-4">
+                                <h6 className="font-weight-bold font-size-lg mb-1 text-black">
+                                    SETUP PAIR
+                                </h6>
+                                {/* <Button
                         onClick={toggleModal}
                         size="sm"
                         color="success"
@@ -343,157 +809,30 @@ export default function LivePreviewExample() {
                     <UncontrolledTooltip target="AddEntryTooltip20">
                         Add Pair
                     </UncontrolledTooltip> */}
-                    <hr></hr>
-                    {addPairShow()}
-                </div>
-                <Modal
-                    centered
-                    size="xl"
-                    isOpen={modal}
-                    zIndex={1300}
-                    toggle={toggleModal}
-                    contentClassName="border-0 bg-transparent">
-                    <Row className="no-gutters">
-                        <Col lg="5">
-                            <div className="bg-white rounded-left">
-                                <div className="p-4 text-center">
-                                    <div className="avatar-icon-wrapper rounded-circle mx-auto">
-                                        <div className="d-block p-0 avatar-icon-wrapper rounded-circle m-0 border-3 border-first">
-                                            <div className="rounded-circle border-3 border-white overflow-hidden">
-                                                <img alt="..." className="img-fluid" src={avatar5} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <h4 className="font-size-lg font-weight-bold my-2">
-                                        Marion Devine
-                                    </h4>
-                                    <div className="text-center my-4">
-                                        <Badge pill color="neutral-first" className="text-first mx-1">
-                                            Web developer
-                                        </Badge>
-                                        <Badge
-                                            pill
-                                            color="neutral-warning"
-                                            className="text-warning mx-1">
-                                            Javascript
-                                        </Badge>
-                                        <Badge
-                                            pill
-                                            color="neutral-danger"
-                                            className="text-danger mx-1">
-                                            Angular
-                                        </Badge>
-                                    </div>
-
-                                    <p className="text-muted mb-4">
-                                        I should be incapable of drawing a single stroke at the
-                                        present moment; and yet I feel that I never was a greater
-                                        artist than now.
-                                    </p>
-
-                                    <div className="divider my-4" />
-                                    <Row>
-                                        <Col lg="6">
-                                            <span className="opacity-6 pb-2">Current month</span>
-                                            <div className="d-flex align-items-center justify-content-center">
-                                                <span className="font-weight-bold font-size-lg">
-                                                    <small className="opacity-6 pr-1">$</small>
-                                                    46,362
-                                                </span>
-                                                <Badge
-                                                    color="neutral-danger"
-                                                    className="ml-2 text-danger">
-                                                    -8%
-                                                </Badge>
-                                            </div>
-                                        </Col>
-                                        <Col lg="6">
-                                            <span className="opacity-6 pb-2">Last year</span>
-                                            <div className="d-flex align-items-center justify-content-center">
-                                                <span className="font-weight-bold font-size-lg">
-                                                    <small className="opacity-6 pr-1">$</small>
-                                                    34,546
-                                                </span>
-                                                <Badge
-                                                    color="neutral-success"
-                                                    className="text-success ml-2">
-                                                    +13%
-                                                </Badge>
-                                            </div>
-                                        </Col>
-                                    </Row>
-                                    <div className="divider my-4" />
-                                    <div className="font-weight-bold text-uppercase text-black-50 text-center mb-3">
-                                        Team members
-                                    </div>
-                                    <div className="avatar-wrapper-overlap d-flex justify-content-center mb-3">
-                                        <div className="avatar-icon-wrapper" id="DelaneyTooltip1">
-                                            <div className="avatar-icon">
-                                                <img alt="..." src={avatar1} />
-                                            </div>
-                                        </div>
-                                        <UncontrolledTooltip
-                                            target="DelaneyTooltip1"
-                                            popperClassName="tooltip-danger">
-                                            Chelsey Delaney
-                                        </UncontrolledTooltip>
-
-                                        <div className="avatar-icon-wrapper" id="SantosTooltip1">
-                                            <div className="avatar-icon">
-                                                <img alt="..." src={avatar7} />
-                                            </div>
-                                        </div>
-                                        <UncontrolledTooltip
-                                            target="SantosTooltip1"
-                                            popperClassName="tooltip-first">
-                                            Laibah Santos
-                                        </UncontrolledTooltip>
-
-                                        <div className="avatar-icon-wrapper" id="WeberTooltip1">
-                                            <div className="avatar-icon">
-                                                <img alt="..." src={avatar1} />
-                                            </div>
-                                        </div>
-                                        <UncontrolledTooltip
-                                            target="WeberTooltip1"
-                                            popperClassName="tooltip-second">
-                                            Ksawery Weber
-                                        </UncontrolledTooltip>
-
-                                        <div className="avatar-icon-wrapper" id="MaganaTooltip1">
-                                            <div className="avatar-icon">
-                                                <img alt="..." src={avatar2} />
-                                            </div>
-                                        </div>
-                                        <UncontrolledTooltip
-                                            target="MaganaTooltip1"
-                                            popperClassName="tooltip-info">
-                                            Killian Magana
-                                        </UncontrolledTooltip>
-
-                                        <div className="avatar-icon-wrapper" id="BanksTooltip1">
-                                            <div className="avatar-icon">
-                                                <img alt="..." src={avatar6} />
-                                            </div>
-                                        </div>
-                                        <UncontrolledTooltip
-                                            target="BanksTooltip1"
-                                            popperClassName="tooltip-success">
-                                            Kean Banks
-                                        </UncontrolledTooltip>
-                                    </div>
-                                    <div className="divider my-4" />
-                                    <Button outline color="first" className="mt-2">
-                                        View complete profile
-                                    </Button>
-                                </div>
+                                <hr></hr>
+                                {addPairShow()}
                             </div>
-                        </Col>
-
-                    </Row>
-                </Modal>
-                <hr></hr>
-                {accountShow()}
+                            <hr></hr>
+                            {accountShow()}
+                        </div>
+                    </TabPane>
+                    <TabPane tabId="3">
+                        <div className="text-center my-5">
+                            <div className="d-inline-flex justify-content-center p-0 rounded-circle avatar-icon-wrapper bg-neutral-primary shadow-primary-sm text-primary mb-2 d-90">
+                                <FontAwesomeIcon
+                                    icon={['far', 'gem']}
+                                    className="d-flex align-self-center font-size-xxl"
+                                />
+                            </div>
+                            <h6 className="font-weight-bold font-size-xxl mb-1 mt-3 text-primary">
+                                Tabbed Section
+                            </h6>
+                            <p className="text-black-50 font-size-lg mb-0">
+                                You have pending actions to take care of.
+                            </p>
+                        </div>
+                    </TabPane>
+                </TabContent>
             </Card>
         </>
     );
